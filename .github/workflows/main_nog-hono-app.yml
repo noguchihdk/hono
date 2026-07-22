@@ -14,23 +14,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Normalize ZIP timestamps
+      - name: Extract original ZIP
         run: |
+          rm -rf deploy-package fixed-dist.zip
           mkdir deploy-package
-          unzip dist.zip -d deploy-package
+          unzip -q dist.zip -d deploy-package
 
-          # ZIP内の全ファイルとディレクトリの更新日時を現在時刻にそろえる
-          find deploy-package -exec touch {} +
+      - name: Set safe timestamps
+        run: |
+          find deploy-package \
+            -exec touch --date="2020-01-01 00:00:00 UTC" {} +
 
+          echo "Sample timestamps:"
+          find deploy-package -type f -printf '%TY-%Tm-%Td %TH:%TM:%TS %p\n' \
+            | head -20
+
+      - name: Create corrected ZIP
+        run: |
           cd deploy-package
-          zip -r ../deploy.zip .
+          TZ=UTC zip -X -q -r ../fixed-dist.zip .
 
-      - name: Show ZIP contents
-        run: unzip -l deploy.zip
+      - name: Verify corrected ZIP
+        run: |
+          echo "Deployment ZIP:"
+          ls -lh fixed-dist.zip
 
-      - name: Deploy to Azure App Service
+          echo "Sample ZIP entries:"
+          unzip -l fixed-dist.zip | head -30
+
+      - name: Deploy corrected ZIP
         uses: azure/webapps-deploy@v3
         with:
           app-name: nog-hono-app
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./deploy.zip
+          package: ./fixed-dist.zip
