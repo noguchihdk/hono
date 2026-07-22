@@ -8,6 +8,19 @@ type User = {
   identityProvider: string;
 };
 
+// 認証クレームの型定義
+type AuthClaim = {
+  typ: string;
+  val: string;
+};
+
+// 認証レスポンスの型定義
+type AuthResponse = {
+  user_id: string;
+  user_claims: AuthClaim[];
+  [key: string]: any;
+};
+
 const app = new Hono<{ Variables: { user: User } }>();
 
 // 認証情報のミドルウェア
@@ -63,18 +76,7 @@ app.get("/profile", async (c) => {
   `);
 });
 
-// 認証クレームの型定義
-type AuthClaim = {
-  typ: string;
-  val: string;
-};
 
-// 認証レスポンスの型定義
-type AuthResponse = {
-  user_id: string;
-  user_claims: AuthClaim[];
-  [key: string]: any;
-};
 
 app.get("/auth/me", async (c) => {
   try {
@@ -244,3 +246,9 @@ app.get("/auth/me", async (c) => {
   }
 });
 
+serve({
+  fetch: app.fetch,
+  port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000
+}, (info) => {
+  console.log(`Server is running on http://localhost:${info.port}`)
+})
